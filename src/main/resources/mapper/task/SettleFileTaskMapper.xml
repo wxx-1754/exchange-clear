@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wuxx.exchangeclear.task.mapper.SettleFileTaskMapper">
+
+    <insert id="insertIgnore" parameterType="com.wuxx.exchangeclear.task.entity.SettleFileTask">
+        INSERT IGNORE INTO settle_file_task (
+            task_no,
+            settle_date,
+            member_id,
+            file_type,
+            version,
+            status,
+            retry_count,
+            max_retry_count
+        ) VALUES (
+            #{taskNo},
+            #{settleDate},
+            #{memberId},
+            #{fileType},
+            #{version},
+            #{status},
+            0,
+            3
+        )
+    </insert>
+
+    <select id="selectByTaskNo" resultType="com.wuxx.exchangeclear.task.entity.SettleFileTask">
+        SELECT
+            id,
+            task_no,
+            settle_date,
+            member_id,
+            file_type,
+            version,
+            status,
+            retry_count,
+            max_retry_count,
+            last_message_id,
+            last_send_time,
+            last_consume_time,
+            error_message,
+            start_time,
+            end_time,
+            created_at,
+            updated_at
+        FROM settle_file_task
+        WHERE task_no = #{taskNo}
+    </select>
+
+    <select id="list" resultType="com.wuxx.exchangeclear.task.entity.SettleFileTask">
+        SELECT
+            id,
+            task_no,
+            settle_date,
+            member_id,
+            file_type,
+            version,
+            status,
+            retry_count,
+            max_retry_count,
+            last_message_id,
+            last_send_time,
+            last_consume_time,
+            error_message,
+            start_time,
+            end_time,
+            created_at,
+            updated_at
+        FROM settle_file_task
+        <where>
+            <if test="settleDate != null">
+                AND settle_date = #{settleDate}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY settle_date DESC, member_id ASC, file_type ASC, version ASC
+    </select>
+
+    <select id="selectPendingTasks" resultType="com.wuxx.exchangeclear.task.entity.SettleFileTask">
+        SELECT
+            id,
+            task_no,
+            settle_date,
+            member_id,
+            file_type,
+            version,
+            status,
+            retry_count,
+            max_retry_count,
+            last_message_id,
+            last_send_time,
+            last_consume_time,
+            error_message,
+            start_time,
+            end_time,
+            created_at,
+            updated_at
+        FROM settle_file_task
+        WHERE status IN ('INIT', 'SENT', 'FAILED')
+        <if test="settleDate != null">
+            AND settle_date = #{settleDate}
+        </if>
+        <if test="fileType != null and fileType != ''">
+            AND file_type = #{fileType}
+        </if>
+        ORDER BY settle_date ASC, member_id ASC, file_type ASC, version ASC
+    </select>
+
+    <select id="selectTasksForSend" resultType="com.wuxx.exchangeclear.task.entity.SettleFileTask">
+        SELECT
+            id,
+            task_no,
+            settle_date,
+            member_id,
+            file_type,
+            version,
+            status,
+            retry_count,
+            max_retry_count,
+            last_message_id,
+            last_send_time,
+            last_consume_time,
+            error_message,
+            start_time,
+            end_time,
+            created_at,
+            updated_at
+        FROM settle_file_task
+        WHERE settle_date = #{settleDate}
+          AND file_type = #{fileType}
+        <choose>
+            <when test="status != null and status != ''">
+                AND status = #{status}
+            </when>
+            <otherwise>
+                AND status IN ('INIT', 'SENT', 'FAILED', 'SEND_FAILED')
+            </otherwise>
+        </choose>
+        ORDER BY settle_date ASC, member_id ASC, file_type ASC, version ASC
+    </select>
+
+    <update id="updateStatusToGenerating">
+        UPDATE settle_file_task
+        SET status = 'GENERATING',
+            error_message = NULL,
+            start_time = NOW(),
+            end_time = NULL,
+            last_consume_time = NOW()
+        WHERE task_no = #{taskNo}
+          AND status IN ('INIT', 'SENT', 'FAILED')
+    </update>
+
+    <update id="updateGenerated">
+        UPDATE settle_file_task
+        SET status = 'GENERATED',
+            end_time = NOW(),
+            error_message = NULL
+        WHERE task_no = #{taskNo}
+    </update>
+
+    <update id="updateFailed">
+        UPDATE settle_file_task
+        SET status = 'FAILED',
+            end_time = NOW(),
+            retry_count = retry_count + 1,
+            error_message = #{errorMessage}
+        WHERE task_no = #{taskNo}
+    </update>
+
+    <update id="updateSent">
+        UPDATE settle_file_task
+        SET status = 'SENT',
+            last_message_id = #{messageId},
+            last_send_time = NOW(),
+            error_message = NULL
+        WHERE task_no = #{taskNo}
+          AND status IN ('INIT', 'SENT', 'FAILED', 'SEND_FAILED')
+    </update>
+
+    <update id="updateSendFailed">
+        UPDATE settle_file_task
+        SET status = 'SEND_FAILED',
+            last_send_time = NOW(),
+            error_message = #{errorMessage}
+        WHERE task_no = #{taskNo}
+    </update>
+
+</mapper>

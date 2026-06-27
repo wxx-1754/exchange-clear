@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wuxx.exchangeclear.member.mapper.SettleMemberMapper">
+
+    <update id="deactivateAll">
+        UPDATE settle_member
+        SET status = 'INACTIVE'
+    </update>
+
+    <insert id="upsert" parameterType="com.wuxx.exchangeclear.member.entity.SettleMember">
+        INSERT INTO settle_member (
+            member_id,
+            member_name,
+            status
+        ) VALUES (
+            #{memberId},
+            #{memberName},
+            #{status}
+        )
+        ON DUPLICATE KEY UPDATE
+            member_name = VALUES(member_name),
+            status = VALUES(status)
+    </insert>
+
+    <select id="listActiveMembers" resultType="com.wuxx.exchangeclear.member.entity.SettleMember">
+        SELECT
+            id,
+            member_id,
+            member_name,
+            status,
+            created_at,
+            updated_at
+        FROM settle_member
+        WHERE status = 'ACTIVE'
+        ORDER BY member_id ASC
+    </select>
+
+</mapper>
