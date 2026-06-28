@@ -59,6 +59,9 @@
             version,
             status,
             publish_time,
+            revoke_time,
+            reissue_time,
+            status_reason,
             download_count,
             created_at,
             updated_at
@@ -82,6 +85,9 @@
             version,
             status,
             publish_time,
+            revoke_time,
+            reissue_time,
+            status_reason,
             download_count,
             created_at,
             updated_at
@@ -108,6 +114,9 @@
             version,
             status,
             publish_time,
+            revoke_time,
+            reissue_time,
+            status_reason,
             download_count,
             created_at,
             updated_at
@@ -125,6 +134,160 @@
         </where>
         ORDER BY settle_date DESC, member_id ASC, file_type ASC, version ASC
     </select>
+
+    <select id="listPublishCandidates" resultType="com.wuxx.exchangeclear.file.entity.SettleFile">
+        SELECT
+            id,
+            file_no,
+            task_no,
+            settle_date,
+            member_id,
+            file_type,
+            file_name,
+            file_size,
+            file_md5,
+            storage_bucket,
+            storage_path,
+            version,
+            status,
+            publish_time,
+            revoke_time,
+            reissue_time,
+            status_reason,
+            download_count,
+            created_at,
+            updated_at
+        FROM settle_file
+        WHERE settle_date = #{settleDate}
+          AND status = 'GENERATED'
+        <if test="fileType != null and fileType != ''">
+            AND file_type = #{fileType}
+        </if>
+        <if test="version != null">
+            AND version = #{version}
+        </if>
+        ORDER BY member_id ASC, file_type ASC, version ASC
+    </select>
+
+    <select id="listRecentFiles" resultType="com.wuxx.exchangeclear.file.entity.SettleFile">
+        SELECT
+            id,
+            file_no,
+            task_no,
+            settle_date,
+            member_id,
+            file_type,
+            file_name,
+            file_size,
+            file_md5,
+            storage_bucket,
+            storage_path,
+            version,
+            status,
+            publish_time,
+            revoke_time,
+            reissue_time,
+            status_reason,
+            download_count,
+            created_at,
+            updated_at
+        FROM settle_file
+        WHERE settle_date &gt;= DATE_SUB(CURDATE(), INTERVAL #{days} DAY)
+        ORDER BY settle_date DESC, member_id ASC, file_type ASC, version ASC
+    </select>
+
+    <select id="listInvalidPublishedFiles" resultType="com.wuxx.exchangeclear.file.entity.SettleFile">
+        SELECT
+            id,
+            file_no,
+            task_no,
+            settle_date,
+            member_id,
+            file_type,
+            file_name,
+            file_size,
+            file_md5,
+            storage_bucket,
+            storage_path,
+            version,
+            status,
+            publish_time,
+            revoke_time,
+            reissue_time,
+            status_reason,
+            download_count,
+            created_at,
+            updated_at
+        FROM settle_file
+        WHERE status = 'PUBLISHED'
+          AND (file_md5 IS NULL OR file_md5 = ''
+            OR file_size IS NULL OR file_size &lt;= 0
+            OR storage_bucket IS NULL OR storage_bucket = ''
+            OR storage_path IS NULL OR storage_path = '')
+        ORDER BY id ASC
+    </select>
+
+    <select id="listReissuedMissingNewVersion" resultType="com.wuxx.exchangeclear.file.entity.SettleFile">
+        SELECT
+            old_file.id,
+            old_file.file_no,
+            old_file.task_no,
+            old_file.settle_date,
+            old_file.member_id,
+            old_file.file_type,
+            old_file.file_name,
+            old_file.file_size,
+            old_file.file_md5,
+            old_file.storage_bucket,
+            old_file.storage_path,
+            old_file.version,
+            old_file.status,
+            old_file.publish_time,
+            old_file.revoke_time,
+            old_file.reissue_time,
+            old_file.status_reason,
+            old_file.download_count,
+            old_file.created_at,
+            old_file.updated_at
+        FROM settle_file old_file
+        WHERE old_file.status = 'REISSUED'
+          AND NOT EXISTS (
+            SELECT 1
+            FROM settle_file new_file
+            WHERE new_file.settle_date = old_file.settle_date
+              AND new_file.member_id = old_file.member_id
+              AND new_file.file_type = old_file.file_type
+              AND new_file.version &gt; old_file.version
+          )
+        ORDER BY old_file.id ASC
+    </select>
+
+    <update id="updateToPublished">
+        UPDATE settle_file
+        SET status = 'PUBLISHED',
+            publish_time = NOW(),
+            status_reason = #{reason}
+        WHERE file_no = #{fileNo}
+          AND status = 'GENERATED'
+    </update>
+
+    <update id="updateToRevoked">
+        UPDATE settle_file
+        SET status = 'REVOKED',
+            revoke_time = NOW(),
+            status_reason = #{reason}
+        WHERE file_no = #{fileNo}
+          AND status IN ('GENERATED', 'PUBLISHED')
+    </update>
+
+    <update id="updateToReissued">
+        UPDATE settle_file
+        SET status = 'REISSUED',
+            reissue_time = NOW(),
+            status_reason = #{reason}
+        WHERE file_no = #{fileNo}
+          AND status IN ('GENERATED', 'PUBLISHED', 'REVOKED')
+    </update>
 
     <update id="increaseDownloadCount">
         UPDATE settle_file

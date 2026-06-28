@@ -23,5 +23,24 @@ public interface SettleFileMapper {
                           @Param("memberId") String memberId,
                           @Param("fileType") String fileType);
 
+    List<SettleFile> listPublishCandidates(@Param("settleDate") LocalDate settleDate,
+                                           @Param("fileType") String fileType,
+                                           @Param("version") Integer version);
+
+    List<SettleFile> listRecentFiles(@Param("days") int days);
+
+    List<SettleFile> listInvalidPublishedFiles();
+
+    List<SettleFile> listReissuedMissingNewVersion();
+
+    int updateToPublished(@Param("fileNo") String fileNo,
+                          @Param("reason") String reason);
+
+    int updateToRevoked(@Param("fileNo") String fileNo,
+                        @Param("reason") String reason);
+
+    int updateToReissued(@Param("fileNo") String fileNo,
+                         @Param("reason") String reason);
+
     int increaseDownloadCount(@Param("fileNo") String fileNo);
 }

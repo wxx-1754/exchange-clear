@@ -18,5 +18,5 @@ public class DownloadSecurityProperties {
 
     private boolean bindIp = false;
 
-    private List<String> allowedStatuses = Collections.singletonList("GENERATED");
+    private List<String> allowedStatuses = Collections.singletonList("PUBLISHED");
 }

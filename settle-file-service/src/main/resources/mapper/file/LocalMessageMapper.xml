@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wuxx.exchangeclear.file.mapper.LocalMessageMapper">
+
+    <insert id="insert" parameterType="com.wuxx.exchangeclear.file.entity.LocalMessage">
+        INSERT INTO local_message (
+            message_id,
+            topic,
+            tag,
+            biz_key,
+            message_type,
+            payload,
+            status,
+            retry_count,
+            max_retry_count,
+            next_retry_time
+        ) VALUES (
+            #{messageId},
+            #{topic},
+            #{tag},
+            #{bizKey},
+            #{messageType},
+            #{payload},
+            #{status},
+            #{retryCount},
+            #{maxRetryCount},
+            #{nextRetryTime}
+        )
+    </insert>
+
+    <select id="selectByMessageId" resultType="com.wuxx.exchangeclear.file.entity.LocalMessage">
+        SELECT
+            id,
+            message_id,
+            topic,
+            tag,
+            biz_key,
+            message_type,
+            payload,
+            status,
+            retry_count,
+            max_retry_count,
+            next_retry_time,
+            error_message,
+            sent_time,
+            created_at,
+            updated_at
+        FROM local_message
+        WHERE message_id = #{messageId}
+    </select>
+
+    <select id="selectRetryMessages" resultType="com.wuxx.exchangeclear.file.entity.LocalMessage">
+        SELECT
+            id,
+            message_id,
+            topic,
+            tag,
+            biz_key,
+            message_type,
+            payload,
+            status,
+            retry_count,
+            max_retry_count,
+            next_retry_time,
+            error_message,
+            sent_time,
+            created_at,
+            updated_at
+        FROM local_message
+        WHERE status IN ('INIT', 'FAILED')
+          AND (next_retry_time IS NULL OR next_retry_time &lt;= #{now})
+          AND retry_count &lt; max_retry_count
+        ORDER BY id ASC
+        LIMIT #{limit}
+    </select>
+
+    <update id="markSent">
+        UPDATE local_message
+        SET status = 'SENT',
+            sent_time = NOW(),
+            error_message = NULL
+        WHERE message_id = #{messageId}
+    </update>
+
+    <update id="markFailed">
+        UPDATE local_message
+        SET status = 'FAILED',
+            retry_count = retry_count + 1,
+            next_retry_time = #{nextRetryTime},
+            error_message = #{errorMessage}
+        WHERE message_id = #{messageId}
+    </update>
+</mapper>

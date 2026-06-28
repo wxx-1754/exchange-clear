@@ -36,6 +36,22 @@ public final class RedisKeys {
         return DEFAULT_PREFIX + ":lock:task:resend:" + taskNo;
     }
 
+    public static String filePublishLock(LocalDate settleDate) {
+        return DEFAULT_PREFIX + ":lock:file:publish:" + format(settleDate);
+    }
+
+    public static String fileRevokeLock(String fileNo) {
+        return DEFAULT_PREFIX + ":lock:file:revoke:" + fileNo;
+    }
+
+    public static String fileReissueLock(String fileNo) {
+        return DEFAULT_PREFIX + ":lock:file:reissue:" + fileNo;
+    }
+
+    public static String reconcileLock(String jobName) {
+        return DEFAULT_PREFIX + ":lock:reconcile:" + jobName;
+    }
+
     public static String fileListCacheLock(LocalDate settleDate, String memberId) {
         return DEFAULT_PREFIX + ":lock:cache:file-list:" + format(settleDate) + ":" + memberId;
     }

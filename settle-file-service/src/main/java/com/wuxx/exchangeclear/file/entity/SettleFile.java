@@ -36,6 +36,12 @@ public class SettleFile {
 
     private LocalDateTime publishTime;
 
+    private LocalDateTime revokeTime;
+
+    private LocalDateTime reissueTime;
+
+    private String statusReason;
+
     private Long downloadCount;
 
     private LocalDateTime createdAt;

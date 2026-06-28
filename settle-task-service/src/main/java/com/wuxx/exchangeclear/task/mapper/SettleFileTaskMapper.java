@@ -41,4 +41,15 @@ public interface SettleFileTaskMapper {
                               @Param("fromStatus") String fromStatus,
                               @Param("toStatus") String toStatus,
                               @Param("errorMessage") String errorMessage);
+
+    int markGeneratingTimeout(@Param("timeoutMinutes") int timeoutMinutes,
+                              @Param("errorMessage") String errorMessage);
+
+    int countUnfinished(@Param("settleDate") LocalDate settleDate,
+                        @Param("fileType") String fileType,
+                        @Param("version") Integer version);
+
+    int countGenerated(@Param("settleDate") LocalDate settleDate,
+                       @Param("fileType") String fileType,
+                       @Param("version") Integer version);
 }

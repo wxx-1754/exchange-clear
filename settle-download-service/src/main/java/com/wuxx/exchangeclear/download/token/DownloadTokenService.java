@@ -6,6 +6,7 @@ import com.wuxx.exchangeclear.download.config.DownloadSecurityProperties;
 import com.wuxx.exchangeclear.download.dto.DownloadTokenPayload;
 import com.wuxx.exchangeclear.download.dto.DownloadTokenResponse;
 import com.wuxx.exchangeclear.download.limit.DownloadLimitService;
+import com.wuxx.exchangeclear.enums.FileStatusEnum;
 import com.wuxx.exchangeclear.file.client.FileMetadataClient;
 import com.wuxx.exchangeclear.file.dto.FileMetadataDTO;
 import com.wuxx.exchangeclear.redis.RedisJsonUtils;
@@ -114,7 +115,13 @@ public class DownloadTokenService {
             throw new BizException("无权下载该文件");
         }
         if (!downloadSecurityProperties.getAllowedStatuses().contains(file.getStatus())) {
-            throw new BizException("当前文件状态不允许下载：" + file.getStatus());
+            if (FileStatusEnum.REVOKED.getCode().equals(file.getStatus())) {
+                throw new BizException(403004, "文件已撤销，禁止下载");
+            }
+            if (FileStatusEnum.REISSUED.getCode().equals(file.getStatus())) {
+                throw new BizException(403005, "文件已重发，请下载新版本文件");
+            }
+            throw new BizException(403003, "文件尚未发布或已失效，禁止下载");
         }
     }
 

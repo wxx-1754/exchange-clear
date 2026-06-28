@@ -143,6 +143,32 @@
         ORDER BY settle_date ASC, member_id ASC, file_type ASC, version ASC
     </select>
 
+    <select id="countUnfinished" resultType="int">
+        SELECT COUNT(1)
+        FROM settle_file_task
+        WHERE settle_date = #{settleDate}
+          AND status != 'GENERATED'
+        <if test="fileType != null and fileType != ''">
+            AND file_type = #{fileType}
+        </if>
+        <if test="version != null">
+            AND version = #{version}
+        </if>
+    </select>
+
+    <select id="countGenerated" resultType="int">
+        SELECT COUNT(1)
+        FROM settle_file_task
+        WHERE settle_date = #{settleDate}
+          AND status = 'GENERATED'
+        <if test="fileType != null and fileType != ''">
+            AND file_type = #{fileType}
+        </if>
+        <if test="version != null">
+            AND version = #{version}
+        </if>
+    </select>
+
     <update id="updateStatusToGenerating">
         UPDATE settle_file_task
         SET status = 'GENERATING',
@@ -213,6 +239,15 @@
         </set>
         WHERE task_no = #{taskNo}
           AND status = #{fromStatus}
+    </update>
+
+    <update id="markGeneratingTimeout">
+        UPDATE settle_file_task
+        SET status = 'FAILED',
+            end_time = NOW(),
+            error_message = #{errorMessage}
+        WHERE status = 'GENERATING'
+          AND updated_at &lt; DATE_SUB(NOW(), INTERVAL #{timeoutMinutes} MINUTE)
     </update>
 
 </mapper>

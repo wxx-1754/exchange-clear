@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wuxx.exchangeclear.file.mapper.FileStatusLogMapper">
+
+    <insert id="insert" parameterType="com.wuxx.exchangeclear.file.entity.FileStatusLog">
+        INSERT INTO file_status_log (
+            file_no,
+            settle_date,
+            member_id,
+            file_type,
+            version,
+            before_status,
+            after_status,
+            operation_type,
+            batch_no,
+            operator,
+            reason
+        ) VALUES (
+            #{fileNo},
+            #{settleDate},
+            #{memberId},
+            #{fileType},
+            #{version},
+            #{beforeStatus},
+            #{afterStatus},
+            #{operationType},
+            #{batchNo},
+            #{operator},
+            #{reason}
+        )
+    </insert>
+
+    <select id="listByFileNo" resultType="com.wuxx.exchangeclear.file.entity.FileStatusLog">
+        SELECT
+            id,
+            file_no,
+            settle_date,
+            member_id,
+            file_type,
+            version,
+            before_status,
+            after_status,
+            operation_type,
+            batch_no,
+            operator,
+            reason,
+            created_at
+        FROM file_status_log
+        WHERE file_no = #{fileNo}
+        ORDER BY id DESC
+    </select>
+</mapper>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wuxx.exchangeclear.file.mapper.FileReissueRecordMapper">
+
+    <insert id="insert" parameterType="com.wuxx.exchangeclear.file.entity.FileReissueRecord">
+        INSERT INTO file_reissue_record (
+            reissue_no,
+            old_file_no,
+            new_file_no,
+            settle_date,
+            member_id,
+            file_type,
+            old_version,
+            new_version,
+            status,
+            reason,
+            operator,
+            error_message
+        ) VALUES (
+            #{reissueNo},
+            #{oldFileNo},
+            #{newFileNo},
+            #{settleDate},
+            #{memberId},
+            #{fileType},
+            #{oldVersion},
+            #{newVersion},
+            #{status},
+            #{reason},
+            #{operator},
+            #{errorMessage}
+        )
+    </insert>
+</mapper>

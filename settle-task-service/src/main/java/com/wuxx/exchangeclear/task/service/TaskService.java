@@ -14,6 +14,8 @@ import com.wuxx.exchangeclear.task.dto.BatchSendRequest;
 import com.wuxx.exchangeclear.task.dto.BatchSendResponse;
 import com.wuxx.exchangeclear.task.dto.CreateTaskRequest;
 import com.wuxx.exchangeclear.task.dto.CreateTaskResponse;
+import com.wuxx.exchangeclear.task.dto.CreateSingleTaskRequest;
+import com.wuxx.exchangeclear.task.dto.CreateSingleTaskResponse;
 import com.wuxx.exchangeclear.task.dto.TaskGenerateResponse;
 import com.wuxx.exchangeclear.task.dto.TaskResendResponse;
 import com.wuxx.exchangeclear.task.dto.TaskStatusUpdateRequest;
@@ -73,6 +75,30 @@ public class TaskService {
         }
         return new CreateTaskResponse(
                 request.getSettleDate(), fileType.getCode(), createdCount, sentCount, sendFailedCount, existsCount);
+    }
+
+    public CreateSingleTaskResponse createSingleTask(CreateSingleTaskRequest request) {
+        FileTypeEnum fileType = FileTypeEnum.require(request.getFileType());
+        SettleFileTask task = new SettleFileTask();
+        task.setTaskNo(IdGenerator.next("TASK"));
+        task.setSettleDate(request.getSettleDate());
+        task.setMemberId(request.getMemberId());
+        task.setFileType(fileType.getCode());
+        task.setVersion(request.getVersion());
+        task.setStatus(TaskStatusEnum.INIT.getCode());
+
+        int affected = settleFileTaskMapper.insertIgnore(task);
+        SettleFileTask saved = affected > 0
+                ? task
+                : findTaskByBiz(request.getSettleDate(), request.getMemberId(), fileType.getCode(), request.getVersion());
+        if (saved == null) {
+            throw new BizException("创建文件生成任务失败");
+        }
+        if (affected > 0 && Boolean.TRUE.equals(request.getAutoSend())) {
+            sendTaskMessage(task);
+            saved = getTask(task.getTaskNo());
+        }
+        return new CreateSingleTaskResponse(saved.getTaskNo(), saved.getStatus(), affected > 0);
     }
 
     public List<TaskVO> list(LocalDate settleDate, String status) {
@@ -153,6 +179,16 @@ public class TaskService {
         if (affected == 0) {
             throw new BizException("任务状态已变化，请刷新后重试：" + taskNo);
         }
+    }
+
+    public int countUnfinished(LocalDate settleDate, String fileType, Integer version) {
+        String normalizedFileType = StringUtils.hasText(fileType) ? FileTypeEnum.require(fileType).getCode() : null;
+        return settleFileTaskMapper.countUnfinished(settleDate, normalizedFileType, version);
+    }
+
+    public int countGenerated(LocalDate settleDate, String fileType, Integer version) {
+        String normalizedFileType = StringUtils.hasText(fileType) ? FileTypeEnum.require(fileType).getCode() : null;
+        return settleFileTaskMapper.countGenerated(settleDate, normalizedFileType, version);
     }
 
     private SettleFileTask buildTask(CreateTaskRequest request, FileTypeEnum fileType, SettleMember member) {
@@ -247,6 +283,16 @@ public class TaskService {
             throw new BizException("任务不存在：" + taskNo);
         }
         return task;
+    }
+
+    private SettleFileTask findTaskByBiz(LocalDate settleDate, String memberId, String fileType, Integer version) {
+        return settleFileTaskMapper.list(settleDate, null)
+                .stream()
+                .filter(task -> memberId.equals(task.getMemberId())
+                        && fileType.equals(task.getFileType())
+                        && version.equals(task.getVersion()))
+                .findFirst()
+                .orElse(null);
     }
 
     private TaskVO toVO(SettleFileTask task) {

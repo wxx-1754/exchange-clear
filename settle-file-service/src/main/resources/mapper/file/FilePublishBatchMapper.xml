@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wuxx.exchangeclear.file.mapper.FilePublishBatchMapper">
+
+    <insert id="insert" parameterType="com.wuxx.exchangeclear.file.entity.FilePublishBatch">
+        INSERT INTO file_publish_batch (
+            batch_no,
+            settle_date,
+            file_type,
+            version,
+            status,
+            total_count,
+            success_count,
+            failed_count,
+            operator,
+            start_time
+        ) VALUES (
+            #{batchNo},
+            #{settleDate},
+            #{fileType},
+            #{version},
+            #{status},
+            #{totalCount},
+            #{successCount},
+            #{failedCount},
+            #{operator},
+            NOW()
+        )
+    </insert>
+
+    <update id="updateStatus">
+        UPDATE file_publish_batch
+        <set>
+            status = #{status},
+            <if test="totalCount != null">
+                total_count = #{totalCount},
+            </if>
+            <if test="successCount != null">
+                success_count = #{successCount},
+            </if>
+            <if test="failedCount != null">
+                failed_count = #{failedCount},
+            </if>
+            error_message = #{errorMessage},
+            <if test="status == 'SUCCESS' or status == 'FAILED'">
+                end_time = NOW(),
+            </if>
+        </set>
+        WHERE batch_no = #{batchNo}
+    </update>
+
+    <select id="list" resultType="com.wuxx.exchangeclear.file.entity.FilePublishBatch">
+        SELECT
+            id,
+            batch_no,
+            settle_date,
+            file_type,
+            version,
+            status,
+            total_count,
+            success_count,
+            failed_count,
+            operator,
+            error_message,
+            start_time,
+            end_time,
+            created_at,
+            updated_at
+        FROM file_publish_batch
+        <where>
+            <if test="settleDate != null">
+                AND settle_date = #{settleDate}
+            </if>
+        </where>
+        ORDER BY id DESC
+    </select>
+</mapper>
