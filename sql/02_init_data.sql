@@ -1,0 +1,12 @@
+-- ExchangeClear 初始化数据
+-- 本项目不通过静态 SQL 预置业务数据，会员与成交数据由 settle-mock-service 动态生成。
+-- 启动微服务集群后，调用以下接口初始化测试数据：
+--
+--   POST http://localhost:9000/api/mock/init
+--   {
+--     "settleDate": "2026-06-26",
+--     "memberCount": 30,
+--     "tradeCountPerMember": 10000
+--   }
+--
+-- 因此本文件为空，仅作占位与说明。

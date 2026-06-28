@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wuxx.exchangeclear.trade.mapper.TradeRecordMapper">
+
+    <delete id="deleteBySettleDate">
+        DELETE FROM trade_record
+        WHERE settle_date = #{settleDate}
+    </delete>
+
+    <insert id="batchInsert">
+        INSERT INTO trade_record (
+            settle_date,
+            member_id,
+            trade_no,
+            product_id,
+            contract_id,
+            direction,
+            price,
+            volume,
+            amount,
+            trade_time
+        ) VALUES
+        <foreach collection="records" item="record" separator=",">
+            (
+                #{record.settleDate},
+                #{record.memberId},
+                #{record.tradeNo},
+                #{record.productId},
+                #{record.contractId},
+                #{record.direction},
+                #{record.price},
+                #{record.volume},
+                #{record.amount},
+                #{record.tradeTime}
+            )
+        </foreach>
+    </insert>
+
+</mapper>

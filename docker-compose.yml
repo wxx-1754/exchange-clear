@@ -17,6 +17,17 @@ services:
       --collation-server=utf8mb4_unicode_ci
     volumes:
       - ./data/mysql:/var/lib/mysql
+      - ./sql:/docker-entrypoint-initdb.d
+
+  nacos:
+    image: nacos/nacos-server:v2.3.2
+    container_name: exchange-clear-nacos
+    restart: always
+    environment:
+      MODE: standalone
+    ports:
+      - "8848:8848"
+      - "9848:9848"
 
   minio:
     image: quay.io/minio/minio
