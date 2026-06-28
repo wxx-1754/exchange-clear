@@ -19,6 +19,7 @@ import com.wuxx.exchangeclear.task.dto.TaskResendResponse;
 import com.wuxx.exchangeclear.task.dto.TaskStatusUpdateRequest;
 import com.wuxx.exchangeclear.task.dto.TaskVO;
 import com.wuxx.exchangeclear.task.entity.SettleFileTask;
+import com.wuxx.exchangeclear.task.lock.TaskResendLockService;
 import com.wuxx.exchangeclear.task.mapper.SettleFileTaskMapper;
 import com.wuxx.exchangeclear.worker.client.FileGenerateClient;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,8 @@ public class TaskService {
     private final FileGenerateTaskProducer fileGenerateTaskProducer;
 
     private final FileGenerateClient fileGenerateClient;
+
+    private final TaskResendLockService taskResendLockService;
 
     public CreateTaskResponse createTasks(CreateTaskRequest request) {
         FileTypeEnum fileType = FileTypeEnum.require(request.getFileType());
@@ -120,6 +123,10 @@ public class TaskService {
     }
 
     public TaskResendResponse resend(String taskNo) {
+        return taskResendLockService.execute(taskNo, () -> resendWithLock(taskNo));
+    }
+
+    private TaskResendResponse resendWithLock(String taskNo) {
         SettleFileTask task = getTask(taskNo);
         if (TaskStatusEnum.GENERATED.getCode().equals(task.getStatus())) {
             throw new BizException("任务已生成，不允许重投：" + taskNo);

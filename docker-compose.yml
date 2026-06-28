@@ -43,6 +43,16 @@ services:
     volumes:
       - ./data/minio:/data
 
+  redis:
+    image: redis:7.2
+    container_name: exchange-clear-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - ./data/redis:/data
+
   rocketmq-namesrv:
     image: apache/rocketmq:5.1.4
     container_name: exchange-clear-rocketmq-namesrv

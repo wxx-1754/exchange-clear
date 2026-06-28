@@ -7,11 +7,13 @@ import com.wuxx.exchangeclear.file.dto.FileChecksumVO;
 import com.wuxx.exchangeclear.file.dto.FileMetadataDTO;
 import com.wuxx.exchangeclear.file.dto.FileVO;
 import com.wuxx.exchangeclear.file.dto.SaveGeneratedFileRequest;
+import com.wuxx.exchangeclear.file.cache.FileCacheService;
 import com.wuxx.exchangeclear.file.entity.SettleFile;
 import com.wuxx.exchangeclear.file.mapper.SettleFileMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -22,6 +24,8 @@ import java.util.stream.Collectors;
 public class SettlementFileService {
 
     private final SettleFileMapper settleFileMapper;
+
+    private final FileCacheService fileCacheService;
 
     @Transactional(rollbackFor = Exception.class)
     public FileMetadataDTO saveGeneratedFile(SaveGeneratedFileRequest request) {
@@ -45,23 +49,28 @@ public class SettlementFileService {
         if (saved == null) {
             throw new BizException("文件元数据保存失败：" + request.getTaskNo());
         }
+        fileCacheService.evictFileList(saved.getSettleDate(), saved.getMemberId());
+        fileCacheService.evictFileMeta(saved.getFileNo());
         return toMetadataDTO(saved);
     }
 
     public List<FileVO> list(LocalDate settleDate, String memberId, String fileType) {
-        return settleFileMapper.list(settleDate, memberId, fileType)
-                .stream()
-                .map(this::toVO)
-                .collect(Collectors.toList());
+        if (settleDate != null && StringUtils.hasText(memberId)) {
+            return fileCacheService.getFileList(settleDate, memberId, () -> listFromDb(settleDate, memberId, null))
+                    .stream()
+                    .filter(file -> !StringUtils.hasText(fileType) || fileType.equals(file.getFileType()))
+                    .collect(Collectors.toList());
+        }
+        return listFromDb(settleDate, memberId, fileType);
     }
 
     public FileChecksumVO checksum(String fileNo) {
-        SettleFile file = getByFileNo(fileNo);
+        FileMetadataDTO file = getMetadataByFileNo(fileNo);
         return new FileChecksumVO(file.getFileNo(), file.getFileName(), file.getFileSize(), file.getFileMd5());
     }
 
     public FileVO detail(String fileNo) {
-        return toVO(getByFileNo(fileNo));
+        return toVO(getMetadataByFileNo(fileNo));
     }
 
     public SettleFile getByFileNo(String fileNo) {
@@ -73,7 +82,7 @@ public class SettlementFileService {
     }
 
     public FileMetadataDTO metadata(String fileNo) {
-        return toMetadataDTO(getByFileNo(fileNo));
+        return getMetadataByFileNo(fileNo);
     }
 
     public FileMetadataDTO metadata(LocalDate settleDate, String memberId, String fileType, Integer version) {
@@ -122,5 +131,38 @@ public class SettlementFileService {
         dto.setStatus(file.getStatus());
         dto.setDownloadCount(file.getDownloadCount());
         return dto;
+    }
+
+    private List<FileVO> listFromDb(LocalDate settleDate, String memberId, String fileType) {
+        return settleFileMapper.list(settleDate, memberId, fileType)
+                .stream()
+                .map(this::toVO)
+                .collect(Collectors.toList());
+    }
+
+    private FileMetadataDTO getMetadataByFileNo(String fileNo) {
+        FileMetadataDTO file = fileCacheService.getFileMeta(fileNo, () -> {
+            SettleFile settleFile = settleFileMapper.selectByFileNo(fileNo);
+            return settleFile == null ? null : toMetadataDTO(settleFile);
+        });
+        if (file == null) {
+            throw new BizException("文件不存在：" + fileNo);
+        }
+        return file;
+    }
+
+    private FileVO toVO(FileMetadataDTO metadata) {
+        FileVO vo = new FileVO();
+        vo.setFileNo(metadata.getFileNo());
+        vo.setSettleDate(metadata.getSettleDate());
+        vo.setMemberId(metadata.getMemberId());
+        vo.setFileType(metadata.getFileType());
+        vo.setFileName(metadata.getFileName());
+        vo.setFileSize(metadata.getFileSize());
+        vo.setFileMd5(metadata.getFileMd5());
+        vo.setStatus(metadata.getStatus());
+        vo.setVersion(metadata.getVersion());
+        vo.setDownloadCount(metadata.getDownloadCount());
+        return vo;
     }
 }

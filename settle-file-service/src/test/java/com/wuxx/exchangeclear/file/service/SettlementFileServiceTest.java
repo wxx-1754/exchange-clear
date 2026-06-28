@@ -4,6 +4,7 @@ import com.wuxx.exchangeclear.common.BizException;
 import com.wuxx.exchangeclear.enums.FileStatusEnum;
 import com.wuxx.exchangeclear.file.dto.FileMetadataDTO;
 import com.wuxx.exchangeclear.file.dto.SaveGeneratedFileRequest;
+import com.wuxx.exchangeclear.file.cache.FileCacheService;
 import com.wuxx.exchangeclear.file.entity.SettleFile;
 import com.wuxx.exchangeclear.file.mapper.SettleFileMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,11 +27,14 @@ class SettlementFileServiceTest {
     @Mock
     private SettleFileMapper settleFileMapper;
 
+    @Mock
+    private FileCacheService fileCacheService;
+
     private SettlementFileService settlementFileService;
 
     @BeforeEach
     void setUp() {
-        settlementFileService = new SettlementFileService(settleFileMapper);
+        settlementFileService = new SettlementFileService(settleFileMapper, fileCacheService);
     }
 
     @Test

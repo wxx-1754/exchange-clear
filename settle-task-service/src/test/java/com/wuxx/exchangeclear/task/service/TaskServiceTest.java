@@ -11,6 +11,7 @@ import com.wuxx.exchangeclear.task.dto.CreateTaskRequest;
 import com.wuxx.exchangeclear.task.dto.CreateTaskResponse;
 import com.wuxx.exchangeclear.task.dto.TaskStatusUpdateRequest;
 import com.wuxx.exchangeclear.task.entity.SettleFileTask;
+import com.wuxx.exchangeclear.task.lock.TaskResendLockService;
 import com.wuxx.exchangeclear.task.mapper.SettleFileTaskMapper;
 import com.wuxx.exchangeclear.worker.client.FileGenerateClient;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,9 @@ class TaskServiceTest {
 
     @Mock
     private FileGenerateClient fileGenerateClient;
+
+    @Mock
+    private TaskResendLockService taskResendLockService;
 
     @InjectMocks
     private TaskService taskService;

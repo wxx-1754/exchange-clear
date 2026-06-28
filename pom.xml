@@ -32,6 +32,7 @@
         <mybatis-spring-boot.version>2.3.1</mybatis-spring-boot.version>
         <minio.version>8.5.17</minio.version>
         <rocketmq-spring-boot.version>2.3.1</rocketmq-spring-boot.version>
+        <redisson.version>3.24.3</redisson.version>
         <lombok.version>1.18.34</lombok.version>
     </properties>
 
