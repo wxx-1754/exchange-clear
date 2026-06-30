@@ -98,6 +98,46 @@ class DownloadTokenServiceTest {
         verify(stringRedisTemplate, never()).delete(RedisKeys.downloadToken("TOKEN001"));
     }
 
+    @Test
+    void validateTokenShouldResolveMemberFromTokenWhenHeaderAbsent() {
+        // browser native download cannot carry X-Member-Id; memberId is null and the
+        // token payload is the member credential
+        DownloadTokenPayload payload = new DownloadTokenPayload();
+        payload.setToken("TOKEN001");
+        payload.setFileNo("FILE001");
+        payload.setMemberId("0001");
+        payload.setClientIp("127.0.0.1");
+        payload.setExpireAt(LocalDateTime.now().plusMinutes(5));
+        payload.setOneTime(false);
+
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(RedisKeys.downloadToken("TOKEN001"))).thenReturn(RedisJsonUtils.toJson(payload));
+        when(fileMetadataClient.getMetadata("FILE001")).thenReturn(file("FILE001", "0001", FileStatusEnum.GENERATED.getCode()));
+
+        FileMetadataDTO file = downloadTokenService.validateToken("FILE001", "TOKEN001", null, "127.0.0.1");
+
+        assertEquals("FILE001", file.getFileNo());
+        // rate limit keyed on the member resolved from the token
+        verify(downloadLimitService).check("0001", "127.0.0.1");
+    }
+
+    @Test
+    void validateTokenShouldRejectWhenSuppliedMemberDiffersFromToken() {
+        DownloadTokenPayload payload = new DownloadTokenPayload();
+        payload.setToken("TOKEN001");
+        payload.setFileNo("FILE001");
+        payload.setMemberId("0001");
+        payload.setClientIp("127.0.0.1");
+        payload.setExpireAt(LocalDateTime.now().plusMinutes(5));
+        payload.setOneTime(false);
+
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(RedisKeys.downloadToken("TOKEN001"))).thenReturn(RedisJsonUtils.toJson(payload));
+
+        assertThrows(BizException.class,
+                () -> downloadTokenService.validateToken("FILE001", "TOKEN001", "0002", "127.0.0.1"));
+    }
+
     private FileMetadataDTO file(String fileNo, String memberId, String status) {
         FileMetadataDTO file = new FileMetadataDTO();
         file.setFileNo(fileNo);

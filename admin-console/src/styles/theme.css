@@ -1,0 +1,429 @@
+/* ============================================================
+   ExchangeClear · Clearing Desk
+   A dark financial-ops terminal. Ink + paper-cream + signal amber.
+   ============================================================ */
+
+:root {
+  /* surfaces */
+  --ink: #0c0e11;
+  --ink-raised: #111419;
+  --surface: #14171c;
+  --surface-2: #1a1e25;
+  --surface-3: #21262e;
+  --line: rgba(236, 230, 216, 0.08);
+  --line-strong: rgba(236, 230, 216, 0.16);
+
+  /* type */
+  --cream: #ece6d8;
+  --fg: #d8d3c4;
+  --fg-muted: #8f8a7a;
+  --fg-dim: #5f5b51;
+
+  /* signal */
+  --amber: #e8b339;
+  --amber-soft: rgba(232, 179, 57, 0.14);
+  --amber-line: rgba(232, 179, 57, 0.42);
+
+  /* status */
+  --sage: #7fb069;
+  --sage-soft: rgba(127, 176, 105, 0.14);
+  --sienna: #d9603f;
+  --sienna-soft: rgba(217, 96, 63, 0.14);
+  --slate: #6f8aa8;
+  --slate-soft: rgba(111, 138, 168, 0.14);
+
+  /* type families */
+  --font-display: 'Fraunces', 'Times New Roman', serif;
+  --font-ui: 'Hanken Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --radius: 4px;
+  --radius-lg: 8px;
+
+  /* Element Plus primary -> amber */
+  --el-color-primary: #e8b339;
+  --el-color-primary-light-3: #c89b3a;
+  --el-color-primary-light-5: #a8852f;
+  --el-color-primary-light-7: #6f5820;
+  --el-color-primary-light-8: #4a3c18;
+  --el-color-primary-light-9: #2a2310;
+  --el-color-primary-dark-2: #f0c25a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--ink);
+  color: var(--fg);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#app {
+  height: 100%;
+}
+
+/* ledger grain — a barely-there hairline grid over the ink */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px);
+  background-size: 100% 28px;
+  opacity: 0.5;
+}
+
+::selection {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+/* scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--ink);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--fg-dim);
+}
+
+/* ---- typography helpers ---- */
+.font-mono {
+  font-family: var(--font-mono);
+  font-feature-settings: 'tnum' 1, 'zero' 1;
+}
+.muted {
+  color: var(--fg-muted);
+}
+.dim {
+  color: var(--fg-dim);
+}
+
+/* ============================================================
+   Element Plus restyle — strip the generic, lean terminal
+   ============================================================ */
+
+/* buttons */
+.el-button {
+  font-family: var(--font-ui);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  border-radius: var(--radius);
+  height: 32px;
+  padding: 0 14px;
+}
+.el-button--default {
+  background: var(--surface-2);
+  border-color: var(--line-strong);
+  color: var(--fg);
+}
+.el-button--default:hover {
+  background: var(--surface-3);
+  border-color: var(--amber-line);
+  color: var(--cream);
+}
+.el-button--primary {
+  background: var(--amber);
+  border-color: var(--amber);
+  color: #1a1408;
+  font-weight: 600;
+}
+.el-button--primary:hover {
+  background: var(--amber-line);
+  border-color: var(--amber);
+  color: #1a1408;
+}
+.el-button--danger {
+  background: transparent;
+  border-color: var(--sienna);
+  color: var(--sienna);
+}
+.el-button--danger:hover {
+  background: var(--sienna-soft);
+  color: var(--sienna);
+}
+.el-button.is-text {
+  color: var(--fg-muted);
+}
+.el-button.is-text:hover {
+  color: var(--amber);
+  background: transparent;
+}
+.el-button.is-link {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* inputs */
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper {
+  background: var(--surface) !important;
+  box-shadow: 0 0 0 1px var(--line-strong) inset !important;
+  border-radius: var(--radius) !important;
+  box-shadow: none;
+}
+.el-input__wrapper:hover,
+.el-select__wrapper:hover {
+  box-shadow: 0 0 0 1px var(--amber-line) inset !important;
+}
+.el-input__wrapper.is-focus,
+.el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 1px var(--amber) inset !important;
+}
+.el-input__inner {
+  color: var(--cream);
+  font-family: var(--font-ui);
+}
+.el-input__inner::placeholder {
+  color: var(--fg-dim);
+}
+
+/* date picker input shows mono */
+.el-date-editor .el-input__inner {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+/* form labels */
+.el-form-item__label {
+  color: var(--fg-muted);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* tables */
+.el-table {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: transparent;
+  --el-table-border-color: var(--line);
+  --el-table-row-hover-bg-color: var(--surface);
+  --el-table-text-color: var(--fg);
+  --el-table-header-text-color: var(--fg-muted);
+  background: transparent;
+  font-size: 13px;
+}
+.el-table th.el-table__cell {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--ink-raised) !important;
+  border-bottom: 1px solid var(--line-strong) !important;
+}
+.el-table td.el-table__cell {
+  border-bottom: 1px solid var(--line) !important;
+  padding: 10px 0;
+}
+.el-table .cell {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+.el-table--enable-row-hover .el-table__body tr:hover > td.el-table__cell {
+  background: var(--surface) !important;
+}
+.el-table__empty-text {
+  color: var(--fg-dim);
+}
+
+/* drawer */
+.el-drawer {
+  --el-drawer-bg-color: var(--ink-raised);
+}
+.el-drawer__header {
+  margin-bottom: 0;
+  padding: 22px 24px 16px;
+  border-bottom: 1px solid var(--line);
+  color: var(--cream);
+}
+.el-drawer__body {
+  padding: 0;
+}
+
+/* dialog */
+.el-dialog {
+  --el-dialog-bg-color: var(--ink-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+}
+.el-dialog__header {
+  padding: 20px 24px 14px;
+  margin-right: 0;
+  border-bottom: 1px solid var(--line);
+}
+.el-dialog__title {
+  color: var(--cream);
+  font-weight: 600;
+}
+.el-dialog__body {
+  color: var(--fg);
+  padding: 20px 24px;
+}
+.el-dialog__footer {
+  border-top: 1px solid var(--line);
+  padding: 14px 24px;
+}
+
+/* message box */
+.el-message-box {
+  --el-messagebox-title-color: var(--cream);
+  background: var(--ink-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+}
+.el-message-box__content {
+  color: var(--fg);
+}
+
+/* tag */
+.el-tag {
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  height: 22px;
+  line-height: 20px;
+  border: 1px solid transparent;
+}
+
+/* pagination */
+.el-pagination {
+  --el-pagination-bg-color: transparent;
+  --el-pagination-text-color: var(--fg-muted);
+  --el-pagination-button-color: var(--fg-muted);
+  --el-pagination-hover-color: var(--amber);
+  --el-pagination-button-bg-color: var(--surface-2);
+  font-family: var(--font-mono);
+}
+.el-pagination .btn-prev,
+.el-pagination .btn-next,
+.el-pager li {
+  background: var(--surface-2) !important;
+  border-radius: var(--radius);
+  margin: 0 2px;
+}
+.el-pager li.is-active {
+  background: var(--amber) !important;
+  color: #1a1408 !important;
+}
+
+/* descriptions (detail drawer) */
+.el-descriptions__label {
+  color: var(--fg-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: transparent !important;
+}
+.el-descriptions__content {
+  color: var(--cream);
+  background: transparent !important;
+}
+.el-descriptions__cell {
+  border-bottom: 1px solid var(--line) !important;
+}
+.el-descriptions--bordered .el-descriptions__body {
+  background: transparent;
+}
+
+/* select dropdown */
+.el-select__popper.el-popper,
+.el-popper.is-light {
+  background: var(--surface) !important;
+  border: 1px solid var(--line-strong) !important;
+}
+.el-select__popper .el-popper__arrow::before {
+  background: var(--surface) !important;
+  border: 1px solid var(--line-strong) !important;
+}
+.el-select-dropdown__item {
+  color: var(--fg);
+}
+.el-select-dropdown__item.is-hovering,
+.el-select-dropdown__item:hover {
+  background: var(--surface-2);
+}
+.el-select-dropdown__item.is-selected {
+  color: var(--amber);
+  font-weight: 600;
+}
+
+/* date picker panel */
+.el-picker-panel {
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  color: var(--fg);
+}
+.el-date-table th {
+  color: var(--fg-muted);
+}
+.el-date-table td .el-date-table-cell__text {
+  color: var(--fg);
+}
+.el-date-table td.today .el-date-table-cell__text {
+  color: var(--amber);
+  font-weight: 700;
+}
+.el-date-table td.current:not(.disabled) .el-date-table-cell__text {
+  background: var(--amber);
+  color: #1a1408;
+}
+
+/* message (toast) */
+.el-message {
+  --el-message-bg-color: var(--ink-raised);
+  --el-message-text-color: var(--cream);
+  --el-message-border-color: var(--line-strong);
+  border-radius: var(--radius);
+  font-family: var(--font-ui);
+}
+.el-message--success {
+  --el-message-bg-color: var(--sage-soft);
+  border-color: var(--sage);
+}
+.el-message--error {
+  --el-message-bg-color: var(--sienna-soft);
+  border-color: var(--sienna);
+}
+
+/* divider */
+.el-divider {
+  border-color: var(--line);
+}
+.el-divider__text {
+  background: var(--ink-raised);
+  color: var(--fg-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* loading */
+.el-loading-mask {
+  background: rgba(12, 14, 17, 0.7);
+}

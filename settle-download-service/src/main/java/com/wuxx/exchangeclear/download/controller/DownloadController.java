@@ -42,11 +42,14 @@ public class DownloadController {
     @GetMapping("/files/{fileNo}")
     public void download(@PathVariable String fileNo,
                          @RequestParam String token,
-                         @RequestHeader("X-Member-Id") String memberId,
+                         @RequestHeader(value = "X-Member-Id", required = false) String memberId,
                          @RequestHeader(value = "X-Client-IP", required = false) String clientIp,
+                         @RequestHeader(value = "X-Request-Id", required = false) String requestId,
+                         @RequestHeader(value = "User-Agent", required = false) String userAgent,
                          HttpServletRequest request,
                          HttpServletResponse response) {
-        fileDownloadService.download(fileNo, token, memberId, resolveClientIp(clientIp, request), response);
+        fileDownloadService.download(
+                fileNo, token, memberId, resolveClientIp(clientIp, request), requestId, userAgent, response);
     }
 
     private String resolveClientIp(String clientIp, HttpServletRequest request) {

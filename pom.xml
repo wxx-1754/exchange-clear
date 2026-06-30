@@ -18,6 +18,7 @@
         <module>settle-task-service</module>
         <module>settle-worker-service</module>
         <module>settle-download-service</module>
+        <module>settle-audit-service</module>
         <module>settle-mock-service</module>
         <module>exchange-gateway</module>
     </modules>

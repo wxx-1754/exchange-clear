@@ -2,7 +2,7 @@
 
 ExchangeClear 是一个金融交易所结算文件生成与发布平台，按职责拆分为多个微服务，接入 Nacos 服务注册发现、Spring Cloud Gateway 统一入口、OpenFeign 服务间调用，并使用 Redis（Redisson）做缓存、限流与分布式锁，RocketMQ 做异步任务投递与状态事件广播。
 
-项目按阶段演进，当前已迭代至第五阶段：
+项目按阶段演进，当前已迭代至第六阶段：
 
 | 阶段 | 能力 |
 |---|---|
@@ -10,7 +10,8 @@ ExchangeClear 是一个金融交易所结算文件生成与发布平台，按职
 | 二期 | 引入 RocketMQ：异步任务投递、Worker 消费、MQ 重试和消费幂等 |
 | 三期 | 拆分微服务：task / file / worker / download，接入 Nacos、Gateway、OpenFeign |
 | 四期 | 引入 Redis：文件列表缓存、文件元数据缓存、下载 Token、会员级限流、IP 级限流、部分分布式锁 |
-| **五期** | **文件发布、撤销、重发与一致性补偿机制** |
+| 五期 | 文件发布、撤销、重发与一致性补偿机制 |
+| **六期** | **下载审计服务：RocketMQ 异步审计、幂等落库、审计查询与异常统计** |
 
 第五阶段之后，文件生命周期调整为：
 
@@ -60,7 +61,7 @@ Worker 生成文件
    MySQL      MinIO             Redis       MySQL
                     (缓存/Token/限流/分布式锁)
 
-所有服务注册到 Nacos。settle-mock-service (:8105) 负责模拟数据生成。
+所有服务注册到 Nacos。settle-mock-service (:8105) 负责模拟数据生成，settle-audit-service (:8106) 负责下载审计消费、查询和统计。
 对账补偿任务由 file-service 与 task-service 内置的 @Scheduled 定时任务承担。
 ```
 
@@ -72,8 +73,9 @@ Worker 生成文件
 | settle-task-service | 8101 | 任务创建、状态管理、投递 RocketMQ、`GENERATING` 超时恢复任务 |
 | settle-file-service | 8102 | 文件元数据管理、**发布 / 撤销 / 重发状态管理、发布锁、缓存删除、状态日志、本地消息表、对账任务** |
 | settle-worker-service | 8103 | 消费 MQ、生成 CSV、上传 MinIO、保存元数据 |
-| settle-download-service | 8104 | 下载 Token、下载校验（仅 `PUBLISHED` 可下载）、下载次数更新 |
+| settle-download-service | 8104 | 下载 Token、下载校验（仅 `PUBLISHED` 可下载）、下载次数更新、发送下载审计 MQ |
 | settle-mock-service | 8105 | 模拟会员/成交数据生成 |
+| settle-audit-service | 8106 | 消费下载审计 MQ、审计落库、审计查询、异常下载统计 |
 | exchange-common | - | 公共 DTO、枚举、异常、Result、Md5Util/IdGenerator、RedisKeys、Feign 接口 |
 | exchange-storage | - | MinIO 对象存储公共封装（worker/download/file 共用） |
 
@@ -123,7 +125,7 @@ Worker 生成文件
 docker-compose up -d
 ```
 
-首次启动时，MySQL 容器会自动执行 `sql/01_schema.sql` 建表。五期新增表（`file_publish_batch` / `file_status_log` / `local_message` / `file_reissue_record`）及 `settle_file` 的 `revoke_time`/`reissue_time`/`status_reason` 字段已包含在 `01_schema.sql` 中；增量脚本见 `docs/sql/03_v5_publish_reissue_reconcile.sql`。
+首次启动时，MySQL 容器会自动执行 `sql/01_schema.sql` 建表。五期新增表（`file_publish_batch` / `file_status_log` / `local_message` / `file_reissue_record`）、六期新增表（`file_download_audit`）已包含在 `01_schema.sql` 中；增量脚本见 `docs/sql/03_v5_publish_reissue_reconcile.sql` 和 `docs/sql/04_v6_download_audit.sql`。
 
 组件地址：
 
@@ -148,6 +150,7 @@ mvn clean package -DskipTests
 - `settle-file-service/target/settle-file-service-0.0.1-SNAPSHOT-exec.jar`
 - `settle-worker-service/target/settle-worker-service-0.0.1-SNAPSHOT-exec.jar`
 - `settle-download-service/target/settle-download-service-0.0.1-SNAPSHOT-exec.jar`
+- `settle-audit-service/target/settle-audit-service-0.0.1-SNAPSHOT-exec.jar`
 - `settle-mock-service/target/settle-mock-service-0.0.1-SNAPSHOT-exec.jar`
 
 ## 三、启动微服务
@@ -160,10 +163,11 @@ java -jar settle-file-service/target/settle-file-service-0.0.1-SNAPSHOT-exec.jar
 java -jar settle-task-service/target/settle-task-service-0.0.1-SNAPSHOT-exec.jar
 java -jar settle-worker-service/target/settle-worker-service-0.0.1-SNAPSHOT-exec.jar
 java -jar settle-download-service/target/settle-download-service-0.0.1-SNAPSHOT-exec.jar
+java -jar settle-audit-service/target/settle-audit-service-0.0.1-SNAPSHOT-exec.jar
 java -jar settle-mock-service/target/settle-mock-service-0.0.1-SNAPSHOT-exec.jar
 ```
 
-启动后访问 Nacos 控制台 `http://localhost:8848/nacos`，确认 6 个服务均已注册。
+启动后访问 Nacos 控制台 `http://localhost:8848/nacos`，确认 7 个服务均已注册。
 
 也可用 `mvn -pl <module> spring-boot:run` 单独运行某个服务。
 
@@ -245,6 +249,21 @@ exchange-clear.reconcile.lock-lease-seconds=120
 exchange-clear.reconcile.generating-timeout-enabled=true
 exchange-clear.reconcile.generating-timeout-minutes=30
 exchange-clear.reconcile.generating-timeout-delay-millis=60000
+```
+
+### 六期配置项
+
+下载审计相关配置（均有默认值，可不显式配置）：
+
+```properties
+exchange-clear.audit.enabled=true
+exchange-clear.audit.save-token-digest=true
+exchange-clear.audit.max-fail-reason-length=1000
+exchange-clear.audit.max-user-agent-length=512
+exchange-clear.mq.topic.download-audit=file.download.audit
+exchange-clear.mq.consumer-group.download-audit=exchange-clear-download-audit-consumer-group
+rocketmq.producer.group=exchange-clear-download-audit-producer-group
+rocketmq.consumer.group=exchange-clear-download-audit-consumer-group
 ```
 
 ## 六、演示流程
@@ -385,6 +404,20 @@ Content-Type: application/json
 GET http://localhost:9000/api/files/{fileNo}/status-logs
 ```
 
+### 6.7 下载审计查询与统计
+
+下载成功、下载失败、Token 无效、权限拒绝、限流、文件未发布/撤销/重发等场景会由 download-service 发送 `file.download.audit` 消息，audit-service 消费后写入 `file_download_audit`。
+
+```http
+GET http://localhost:9000/api/audits/downloads?fileNo={fileNo}&pageNo=1&pageSize=20
+GET http://localhost:9000/api/audits/downloads/{auditNo}
+GET http://localhost:9000/api/audits/files/{fileNo}/downloads
+GET http://localhost:9000/api/audits/members/{memberId}/downloads
+GET http://localhost:9000/api/audits/stats/file-download?fileNo={fileNo}
+GET http://localhost:9000/api/audits/stats/member-download?memberId={memberId}
+GET http://localhost:9000/api/audits/stats/abnormal?startTime=2026-06-26 00:00:00&endTime=2026-06-27 00:00:00
+```
+
 ## 七、一致性保障设计
 
 ### 7.1 分布式锁
@@ -451,14 +484,15 @@ GET http://localhost:9000/api/files/{fileNo}/status-logs
 | file_status_log | 文件状态变更日志（GENERATE/PUBLISH/REVOKE/REISSUE） |
 | local_message | 本地消息表（INIT/SENT/FAILED） |
 | file_reissue_record | 文件重发记录（关联新旧文件与版本） |
+| file_download_audit | 下载审计记录（下载结果、会员、文件、IP、User-Agent、耗时、失败原因） |
 | trade_record | 成交明细（mock 写入，worker 读取） |
 
-建表脚本：`sql/01_schema.sql`；五期增量：`docs/sql/03_v5_publish_reissue_reconcile.sql`。
+建表脚本：`sql/01_schema.sql`；五期增量：`docs/sql/03_v5_publish_reissue_reconcile.sql`；六期增量：`docs/sql/04_v6_download_audit.sql`。
 
 ## 十、说明
 
 - 当前阶段只实现 `TRADE` 成交文件。
-- RocketMQ Topic：`file.generate.task`（生成任务，Producer 在 file-service 重发与 task-service，Consumer 在 worker-service）、`file.status.event`（状态变更事件）。
+- RocketMQ Topic：`file.generate.task`（生成任务，Producer 在 file-service 重发与 task-service，Consumer 在 worker-service）、`file.status.event`（状态变更事件）、`file.download.audit`（下载审计，Producer 在 download-service，Consumer 在 audit-service）。
 - 任务状态机：`INIT/SENT/FAILED -> GENERATING -> GENERATED`，`SEND_FAILED` 可通过 `/api/tasks/{taskNo}/resend` 重投。
 - Worker 并发消费通过条件更新抢占任务执行权，仅更新成功的 Worker 继续生成；重复消费时已 `GENERATED` 直接跳过。
 - 文件生成使用 `id > lastId LIMIT pageSize` 分页，本地先写 `.tmp` 再移动为正式 CSV。

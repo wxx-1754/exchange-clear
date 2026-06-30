@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wuxx.exchangeclear.audit.mapper.FileDownloadAuditMapper">
+
+    <sql id="BaseColumns">
+        id,
+        audit_no,
+        request_id,
+        action,
+        download_status,
+        fail_reason,
+        file_no,
+        file_name,
+        file_type,
+        settle_date,
+        member_id,
+        version,
+        client_ip,
+        user_agent,
+        token_digest,
+        file_size,
+        download_bytes,
+        start_time,
+        end_time,
+        cost_ms,
+        created_at
+    </sql>
+
+    <insert id="insert" parameterType="com.wuxx.exchangeclear.audit.entity.FileDownloadAudit"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO file_download_audit (
+            audit_no,
+            request_id,
+            action,
+            download_status,
+            fail_reason,
+            file_no,
+            file_name,
+            file_type,
+            settle_date,
+            member_id,
+            version,
+            client_ip,
+            user_agent,
+            token_digest,
+            file_size,
+            download_bytes,
+            start_time,
+            end_time,
+            cost_ms
+        ) VALUES (
+            #{auditNo},
+            #{requestId},
+            #{action},
+            #{downloadStatus},
+            #{failReason},
+            #{fileNo},
+            #{fileName},
+            #{fileType},
+            #{settleDate},
+            #{memberId},
+            #{version},
+            #{clientIp},
+            #{userAgent},
+            #{tokenDigest},
+            #{fileSize},
+            #{downloadBytes},
+            #{startTime},
+            #{endTime},
+            #{costMs}
+        )
+    </insert>
+
+    <select id="selectByAuditNo" resultType="com.wuxx.exchangeclear.audit.entity.FileDownloadAudit">
+        SELECT
+        <include refid="BaseColumns"/>
+        FROM file_download_audit
+        WHERE audit_no = #{auditNo}
+    </select>
+
+    <sql id="QueryWhere">
+        <where>
+            <if test="query.memberId != null and query.memberId != ''">
+                AND member_id = #{query.memberId}
+            </if>
+            <if test="query.fileNo != null and query.fileNo != ''">
+                AND file_no = #{query.fileNo}
+            </if>
+            <if test="query.settleDate != null">
+                AND settle_date = #{query.settleDate}
+            </if>
+            <if test="query.fileType != null and query.fileType != ''">
+                AND file_type = #{query.fileType}
+            </if>
+            <if test="query.downloadStatus != null and query.downloadStatus != ''">
+                AND download_status = #{query.downloadStatus}
+            </if>
+            <if test="query.clientIp != null and query.clientIp != ''">
+                AND client_ip = #{query.clientIp}
+            </if>
+            <if test="query.startTime != null">
+                AND created_at &gt;= #{query.startTime}
+            </if>
+            <if test="query.endTime != null">
+                AND created_at &lt; #{query.endTime}
+            </if>
+        </where>
+    </sql>
+
+    <select id="countByQuery" resultType="long">
+        SELECT COUNT(*)
+        FROM file_download_audit
+        <include refid="QueryWhere"/>
+    </select>
+
+    <select id="listByQuery" resultType="com.wuxx.exchangeclear.audit.entity.FileDownloadAudit">
+        SELECT
+        <include refid="BaseColumns"/>
+        FROM file_download_audit
+        <include refid="QueryWhere"/>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="statFileDownloads" resultType="com.wuxx.exchangeclear.audit.dto.FileDownloadStatsDTO">
+        SELECT
+            file_no,
+            SUM(CASE WHEN download_status = 'SUCCESS' THEN 1 ELSE 0 END) AS success_count,
+            SUM(CASE WHEN download_status &lt;&gt; 'SUCCESS' THEN 1 ELSE 0 END) AS failed_count,
+            MAX(CASE WHEN download_status = 'SUCCESS' THEN created_at ELSE NULL END) AS last_success_time,
+            SUBSTRING_INDEX(
+                    GROUP_CONCAT(CASE WHEN download_status = 'SUCCESS' THEN client_ip ELSE NULL END ORDER BY created_at DESC),
+                    ',',
+                    1
+            ) AS last_client_ip
+        FROM file_download_audit
+        <where>
+            <if test="settleDate != null">
+                AND settle_date = #{settleDate}
+            </if>
+            <if test="fileType != null and fileType != ''">
+                AND file_type = #{fileType}
+            </if>
+            <if test="fileNo != null and fileNo != ''">
+                AND file_no = #{fileNo}
+            </if>
+            AND file_no IS NOT NULL
+        </where>
+        GROUP BY file_no
+        ORDER BY file_no ASC
+    </select>
+
+    <select id="statMemberDownloads" resultType="com.wuxx.exchangeclear.audit.dto.MemberDownloadStatsDTO">
+        SELECT
+            member_id,
+            COUNT(*) AS total_count,
+            SUM(CASE WHEN download_status = 'SUCCESS' THEN 1 ELSE 0 END) AS success_count,
+            SUM(CASE WHEN download_status &lt;&gt; 'SUCCESS' THEN 1 ELSE 0 END) AS failed_count,
+            MAX(created_at) AS last_download_time
+        FROM file_download_audit
+        <where>
+            <if test="memberId != null and memberId != ''">
+                AND member_id = #{memberId}
+            </if>
+            <if test="startTime != null">
+                AND created_at &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                AND created_at &lt; #{endTime}
+            </if>
+            AND member_id IS NOT NULL
+        </where>
+        GROUP BY member_id
+        ORDER BY total_count DESC
+    </select>
+
+    <select id="countByStatus" resultType="long">
+        SELECT COUNT(*)
+        FROM file_download_audit
+        <where>
+            AND download_status = #{status}
+            <if test="startTime != null">
+                AND created_at &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                AND created_at &lt; #{endTime}
+            </if>
+        </where>
+    </select>
+
+    <select id="topIps" resultType="com.wuxx.exchangeclear.audit.dto.DownloadRankDTO">
+        SELECT
+            client_ip AS name,
+            COUNT(*) AS count
+        FROM file_download_audit
+        <where>
+            AND download_status &lt;&gt; 'SUCCESS'
+            AND client_ip IS NOT NULL
+            AND client_ip &lt;&gt; ''
+            <if test="startTime != null">
+                AND created_at &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                AND created_at &lt; #{endTime}
+            </if>
+        </where>
+        GROUP BY client_ip
+        ORDER BY count DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="topMembers" resultType="com.wuxx.exchangeclear.audit.dto.DownloadRankDTO">
+        SELECT
+            member_id AS name,
+            COUNT(*) AS count
+        FROM file_download_audit
+        <where>
+            AND download_status &lt;&gt; 'SUCCESS'
+            AND member_id IS NOT NULL
+            AND member_id &lt;&gt; ''
+            <if test="startTime != null">
+                AND created_at &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                AND created_at &lt; #{endTime}
+            </if>
+        </where>
+        GROUP BY member_id
+        ORDER BY count DESC
+        LIMIT #{limit}
+    </select>
+</mapper>

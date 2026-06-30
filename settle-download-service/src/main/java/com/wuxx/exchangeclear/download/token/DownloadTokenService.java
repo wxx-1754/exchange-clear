@@ -64,17 +64,23 @@ public class DownloadTokenService {
     }
 
     public FileMetadataDTO validateToken(String fileNo, String token, String memberId, String clientIp) {
-        validateIdentity(memberId, clientIp);
-        downloadLimitService.check(memberId, clientIp);
         if (!StringUtils.hasText(token)) {
             throw new BizException("下载 Token 不能为空");
         }
 
         DownloadTokenPayload payload = readToken(token);
+        // memberId is optional on the download path: browsers fire a native GET that
+        // cannot carry custom headers, so the token itself is the member credential.
+        // When the caller supplies memberId (e.g. internal/feign callers), still
+        // verify it matches the token; otherwise trust the token payload.
+        String effectiveMemberId = StringUtils.hasText(memberId) ? memberId : payload.getMemberId();
+        validateIdentity(effectiveMemberId, clientIp);
+        downloadLimitService.check(effectiveMemberId, clientIp);
+
         if (!fileNo.equals(payload.getFileNo())) {
             throw new BizException("下载 Token 与文件不匹配");
         }
-        if (!memberId.equals(payload.getMemberId())) {
+        if (StringUtils.hasText(memberId) && !memberId.equals(payload.getMemberId())) {
             throw new BizException("下载 Token 与会员不匹配");
         }
         if (downloadSecurityProperties.isBindIp() && !clientIp.equals(payload.getClientIp())) {
@@ -86,7 +92,7 @@ public class DownloadTokenService {
         }
 
         FileMetadataDTO file = fileMetadataClient.getMetadata(fileNo);
-        validateFilePermission(file, memberId);
+        validateFilePermission(file, effectiveMemberId);
         if (Boolean.TRUE.equals(payload.getOneTime())) {
             deleteToken(token);
         }

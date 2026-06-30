@@ -24,9 +24,9 @@ public class FileLifecycleProperties {
     @Data
     public static class LocalMessage {
 
-        private String statusEventTopic = "file.status.event";
+        private String statusEventTopic = "file-status-event";
 
-        private String fileGenerateTaskTopic = "file.generate.task";
+        private String fileGenerateTaskTopic = "file-generate-task";
 
         private int maxRetryCount = 5;
 

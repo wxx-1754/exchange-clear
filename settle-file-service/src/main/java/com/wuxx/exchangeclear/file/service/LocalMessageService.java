@@ -99,8 +99,9 @@ public class LocalMessageService {
             LocalDateTime nextRetryTime = LocalDateTime.now()
                     .plusSeconds(fileLifecycleProperties.getLocalMessage().getRetryIntervalSeconds());
             localMessageMapper.markFailed(message.getMessageId(), errorMessage, nextRetryTime);
-            log.error("[MQ-PRODUCER] send local message failed, messageId={}, error={}",
-                    message.getMessageId(), errorMessage, e);
+            log.error("[MQ-PRODUCER] send local message failed, messageId={}, messageType={}, topic={}, tag={}, bizKey={}, error={}",
+                    message.getMessageId(), message.getMessageType(), message.getTopic(), message.getTag(), message.getBizKey(),
+                    errorMessage, e);
         }
     }
 

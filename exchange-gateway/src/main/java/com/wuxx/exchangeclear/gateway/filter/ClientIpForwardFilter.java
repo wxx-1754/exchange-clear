@@ -10,6 +10,7 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import java.net.InetSocketAddress;
+import java.util.UUID;
 
 @Component
 public class ClientIpForwardFilter implements GlobalFilter, Ordered {
@@ -20,16 +21,23 @@ public class ClientIpForwardFilter implements GlobalFilter, Ordered {
 
     private static final String REAL_IP_HEADER = "X-Real-IP";
 
+    private static final String REQUEST_ID_HEADER = "X-Request-Id";
+
+    private static final String REQUEST_ID_PREFIX = "REQ";
+
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String clientIp = resolveClientIp(exchange.getRequest());
-        if (!StringUtils.hasText(clientIp)) {
-            return chain.filter(exchange);
-        }
+        String requestId = resolveRequestId(exchange.getRequest());
 
         ServerHttpRequest request = exchange.getRequest()
                 .mutate()
-                .headers(headers -> headers.set(CLIENT_IP_HEADER, clientIp))
+                .headers(headers -> {
+                    headers.set(REQUEST_ID_HEADER, requestId);
+                    if (StringUtils.hasText(clientIp)) {
+                        headers.set(CLIENT_IP_HEADER, clientIp);
+                    }
+                })
                 .build();
         return chain.filter(exchange.mutate().request(request).build());
     }
@@ -55,5 +63,13 @@ public class ClientIpForwardFilter implements GlobalFilter, Ordered {
             return null;
         }
         return remoteAddress.getAddress().getHostAddress();
+    }
+
+    private String resolveRequestId(ServerHttpRequest request) {
+        String requestId = request.getHeaders().getFirst(REQUEST_ID_HEADER);
+        if (StringUtils.hasText(requestId)) {
+            return requestId.trim();
+        }
+        return REQUEST_ID_PREFIX + UUID.randomUUID().toString().replace("-", "");
     }
 }
